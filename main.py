@@ -197,7 +197,14 @@ def show_high_scores_menu(screen, clock, font_title, font_subtitle, font_normal,
         
         # Tabla de puntuaciones
         y_start = 240
-        pygame.draw.rect(screen, (255, 255, 255, 50),
+        
+        # Fondo semi-transparente para la tabla (SIN borde)
+        table_surface = pygame.Surface((500, 320), pygame.SRCALPHA)
+        pygame.draw.rect(table_surface, (20, 20, 40, 200), (0, 0, 500, 320), border_radius=10)
+        screen.blit(table_surface, (SCREEN_WIDTH//2 - 250, y_start - 10))
+        
+        # Borde exterior decorativo
+        pygame.draw.rect(screen, (100, 200, 255),
                         (SCREEN_WIDTH//2 - 250, y_start - 10, 500, 320),
                         2, border_radius=10)
         
@@ -210,43 +217,49 @@ def show_high_scores_menu(screen, clock, font_title, font_subtitle, font_normal,
             draw_text(screen, header, header_x[i], y_start + 10,
                      font_normal, (100, 200, 255), center=False)
         
+        # Línea separadora de encabezados
         pygame.draw.line(screen, (100, 200, 255),
-                        (SCREEN_WIDTH//2 - 250, y_start + 40),
-                        (SCREEN_WIDTH//2 + 250, y_start + 40), 2)
+                        (SCREEN_WIDTH//2 - 240, y_start + 40),
+                        (SCREEN_WIDTH//2 + 240, y_start + 40), 2)
         
         # Lista de puntuaciones
         for i, score_data in enumerate(scores[:10]):  # Mostrar top 10
-            y_pos = y_start + 60 + i * 30
+            y_pos = y_start + 60 + i * 26
             
-            # Color alternado para filas
+            # Color alternado para filas (fondo más visible)
             if i % 2 == 0:
-                pygame.draw.rect(screen, (255, 255, 255, 20),
-                               (SCREEN_WIDTH//2 - 250, y_pos - 15, 500, 30))
+                row_surface = pygame.Surface((480, 24), pygame.SRCALPHA)
+                pygame.draw.rect(row_surface, (255, 255, 255, 30), (0, 0, 480, 24))
+                screen.blit(row_surface, (SCREEN_WIDTH//2 - 240, y_pos - 12))
             
             # Posición con medalla para top 3
             if i == 0:
-                pos_text = "🥇"
+                pos_text = "1st"
+                pos_color = (255, 215, 0)  # Oro
             elif i == 1:
-                pos_text = "🥈"
+                pos_text = "2nd"
+                pos_color = (192, 192, 192)  # Plata
             elif i == 2:
-                pos_text = "🥉"
+                pos_text = "3rd"
+                pos_color = (205, 127, 50)  # Bronce
             else:
-                pos_text = f"{i+1}°"
+                pos_text = f"{i+1}"
+                pos_color = (200, 200, 200)
             
-            # Mostrar datos
+            # Mostrar datos con mejor espaciado
             draw_text(screen, pos_text, header_x[0], y_pos,
-                     font_normal, (255, 255, 200), center=False)
+                     font_normal, pos_color, center=False)
             draw_text(screen, score_data["name"], header_x[1], y_pos,
                      font_normal, (255, 255, 255), center=False)
             draw_text(screen, str(score_data["score"]), header_x[2], y_pos,
                      font_normal, (100, 255, 100), center=False)
             draw_text(screen, score_data["date"], header_x[3], y_pos,
-                     font_normal, (200, 200, 200), center=False)
+                     font_normal, (180, 180, 180), center=False)
         
         # Si no hay suficientes puntuaciones
         if len(scores) < 10:
             for i in range(len(scores), 10):
-                y_pos = y_start + 60 + i * 30
+                y_pos = y_start + 60 + i * 26
                 draw_text(screen, "- - -", SCREEN_WIDTH // 2, y_pos,
                          font_normal, (100, 100, 100), center=True)
         

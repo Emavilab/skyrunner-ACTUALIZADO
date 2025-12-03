@@ -6,6 +6,9 @@ import pygame
 import random
 import math
 import time
+import json
+import os
+from datetime import datetime
 from objects.constants import *
 from Models.player import Player
 from Levels.level import Level
@@ -63,6 +66,9 @@ class Game:
         # High score
         self.player_name = ""
         self.entering_name = False
+        self.is_new_high_score = False
+        self.high_scores = self.load_high_scores()
+        self.current_high_score = self.get_current_high_score()
         
         # Sistema de spawning de drones
         self.drone_spawn_timer = 0
@@ -71,6 +77,56 @@ class Game:
         
         # Comenzar juego
         self.start_level(1)
+    
+    def load_high_scores(self):
+        """Cargar puntuaciones altas desde archivo"""
+        try:
+            if os.path.exists("high_scores.json"):
+                with open("high_scores.json", "r") as f:
+                    return json.load(f)
+        except:
+            pass
+        return {
+            "easy": [],
+            "normal": [],
+            "hard": []
+        }
+    
+    def get_current_high_score(self):
+        """Obtener el récord actual de la dificultad seleccionada"""
+        scores = self.high_scores.get(self.difficulty, [])
+        if scores:
+            return max(score["score"] for score in scores)
+        return 0
+    
+    def is_high_score(self, score):
+        """Verificar si la puntuación es un nuevo récord"""
+        scores = self.high_scores.get(self.difficulty, [])
+        if len(scores) < 10:
+            return True
+        return score > min(score["score"] for score in scores)
+    
+    def save_high_score(self, name, score):
+        """Guardar nueva puntuación alta"""
+        try:
+            self.high_scores[self.difficulty].append({
+                "name": name[:3].upper(),
+                "score": score,
+                "date": datetime.now().strftime("%Y-%m-%d")
+            })
+            # Ordenar y mantener solo top 10
+            self.high_scores[self.difficulty].sort(key=lambda x: x["score"], reverse=True)
+            self.high_scores[self.difficulty] = self.high_scores[self.difficulty][:10]
+            
+            with open("high_scores.json", "w") as f:
+                json.dump(self.high_scores, f, indent=2)
+            
+            # Actualizar récord actual
+            self.current_high_score = self.get_current_high_score()
+            return True
+        except Exception as e:
+            print(f"[HighScore] Error al guardar: {e}")
+            return False
     
     def start_level(self, level_number):
         self.current_level_number = level_number
@@ -553,6 +609,13 @@ class Game:
         diff_value = self.font_subtitle.render(self.settings['name'], True, self.settings['color'])
         self.screen.blit(diff_label, (panel_x + panel_width - 180, info_y - 2))
         self.screen.blit(diff_value, (panel_x + panel_width - 95, info_y - 2))
+        
+        # Mostrar récord actual (centro, debajo)
+        if self.current_high_score > 0:
+            record_text = f"Record: {self.current_high_score}"
+            record_surface = self.font_small.render(record_text, True, (255, 215, 0))
+            record_rect = record_surface.get_rect(center=(panel_x + panel_width // 2, panel_y + panel_height + 15))
+            self.screen.blit(record_surface, record_rect)
     
     def draw_difficulty_hud(self):
         color = self.settings["color"]
@@ -699,11 +762,34 @@ class Game:
         draw_text(self.screen, f"Dificultad: {self.settings['name']}",
                  SCREEN_WIDTH // 2, 320, self.font_subtitle, self.settings['color'], center=True)
         
-        draw_text(self.screen, "ENTER - Jugar de Nuevo", SCREEN_WIDTH // 2, 400,
-                 self.font_subtitle, GREEN, center=True)
+        # Verificar si es nuevo récord
+        if self.player and not self.is_new_high_score:
+            self.is_new_high_score = self.is_high_score(self.player.score)
+            if self.is_new_high_score:
+                self.entering_name = True
         
-        draw_text(self.screen, "Q - Volver al Menú", SCREEN_WIDTH // 2, 450,
-                 self.font_subtitle, WHITE, center=True)
+        # Si está ingresando nombre
+        if self.entering_name:
+            draw_text(self.screen, "¡NUEVO RÉCORD!", SCREEN_WIDTH // 2, 370,
+                     self.font_subtitle, (255, 215, 0), center=True)
+            
+            draw_text(self.screen, "Ingresa tus iniciales (3 letras):", SCREEN_WIDTH // 2, 420,
+                     self.font_hud, WHITE, center=True)
+            
+            # Mostrar nombre actual con cursor parpadeante
+            cursor = "_" if (pygame.time.get_ticks() // 500) % 2 == 0 else " "
+            name_display = self.player_name + cursor if len(self.player_name) < 3 else self.player_name
+            draw_text(self.screen, name_display, SCREEN_WIDTH // 2, 470,
+                     self.font_title, YELLOW, center=True)
+            
+            draw_text(self.screen, "ENTER - Guardar", SCREEN_WIDTH // 2, 540,
+                     self.font_hud, GREEN, center=True)
+        else:
+            draw_text(self.screen, "ENTER - Jugar de Nuevo", SCREEN_WIDTH // 2, 400,
+                     self.font_subtitle, GREEN, center=True)
+            
+            draw_text(self.screen, "Q - Volver al Menú", SCREEN_WIDTH // 2, 450,
+                     self.font_subtitle, WHITE, center=True)
     
     def handle_events(self):
         for event in pygame.event.get():
@@ -751,18 +837,38 @@ class Game:
                             self.state = STATE_VICTORY
                 
                 elif self.state == STATE_VICTORY:
-                    if event.key == pygame.K_RETURN:
-                        self.reset_game()
-                    elif event.key == pygame.K_q:
-                        # Volver al menú principal
-                        print("[DEBUG] Q presionada en VICTORY - volviendo al menú")
-                        self.return_to_menu = True
-                        self.running = False
+                    # Si está ingresando nombre para high score
+                    if self.entering_name:
+                        if event.key == pygame.K_RETURN and len(self.player_name) >= 1:
+                            # Guardar puntuación
+                            name = self.player_name if len(self.player_name) == 3 else self.player_name + "___"[:3-len(self.player_name)]
+                            if self.player:
+                                self.save_high_score(name, self.player.score)
+                                print(f"[HighScore] Guardado: {name} - {self.player.score}")
+                            self.entering_name = False
+                            self.player_name = ""
+                        elif event.key == pygame.K_BACKSPACE:
+                            self.player_name = self.player_name[:-1]
+                        elif event.unicode.isalpha() and len(self.player_name) < 3:
+                            self.player_name += event.unicode.upper()
+                    else:
+                        if event.key == pygame.K_RETURN:
+                            self.reset_game()
+                        elif event.key == pygame.K_q:
+                            # Volver al menú principal
+                            print("[DEBUG] Q presionada en VICTORY - volviendo al menú")
+                            self.return_to_menu = True
+                            self.running = False
     
     def reset_game(self):
         """Reinicia completamente el juego desde el nivel 1"""
         self.current_level_number = 1
         self.state = STATE_PLAYING
+        
+        # Resetear variables de high score
+        self.player_name = ""
+        self.entering_name = False
+        self.is_new_high_score = False
         
         # Reiniciar tiempo
         self.start_time = time.time()
