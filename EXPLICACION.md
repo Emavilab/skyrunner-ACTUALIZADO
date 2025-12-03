@@ -644,7 +644,7 @@ if width <= 0 or height <= 0:
 
 ---
 
-## ✅ 5. PRESENTACIÓN ANTE LA TERNA EVALUADORA
+
 
 ### 🏗️ Arquitectura del Proyecto
 
