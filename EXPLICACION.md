@@ -12,7 +12,7 @@
 skyrunner-main/
 ├── main.py                      # Punto de entrada - Sistema de menús
 ├── README.md                    # Documentación completa
-├── EVALUACION_PROYECTO.md       # Este documento
+
 │
 ├── Models/                      # 📦 Módulo de Modelos
 │   ├── player.py               # Clase Player (jugador)
