@@ -689,35 +689,272 @@ class AudioManager:
         except Exception as e:
             print(f"ERROR Error al reproducir {sound_name}: {e}")
     
-    def play_music(self, track_name, loops=-1):
+    def play_music(self, track_name, loops=-1, volume=None):
         """
         Reproduce música de fondo.
         
         Args:
-            track_name: Nombre de la pista
+            track_name: 'menu' para menú, 'game' para juego
             loops: Número de loops (-1 = infinito)
+            volume: Volumen personalizado (None = usar predeterminado)
         """
-        if not self.enabled or not self.music_active or track_name not in self.music_tracks:
+        if not self.enabled or not self.music_active:
             return
         
         try:
-            # Detener música actual si hay
+            # Detener música actual
             pygame.mixer.music.stop()
             
-            # Cargar y reproducir nueva pista
-            sound = self.music_tracks[track_name]
+            # Generar música según el tipo
+            if track_name == 'menu':
+                self._create_menu_music()
+                target_volume = volume if volume is not None else self.music_volume * 0.9  # Música épica fuerte
+            elif track_name == 'game':
+                self._create_game_music()
+                target_volume = volume if volume is not None else self.music_volume * 0.75  # Batalla intensa pero no abrumadora
+            else:
+                return
             
-            # Convertir Sound a música (necesita ser más largo)
-            # Para música larga, necesitaríamos guardar como archivo temporal
-            # Por ahora, usamos un approach simple
+            # Configurar y reproducir
+            pygame.mixer.music.set_volume(target_volume)
+            pygame.mixer.music.play(loops)
+            self.current_music = track_name
             
-            print(f"🎶 Reproduciendo música: {track_name}")
-            
-            # Nota: pygame.mixer.music necesita archivos o bytes largos
-            # Para este demo, usamos el sistema de sonidos
+            print(f"🎶 Reproduciendo música: {track_name} (vol: {target_volume:.2f})")
             
         except Exception as e:
             print(f"ERROR Error al reproducir música {track_name}: {e}")
+    
+    def _create_menu_music(self):
+        """Crea música épica de guerra para el menú"""
+        try:
+            import numpy as np
+            import io
+            import wave
+            
+            sample_rate = 44100
+            duration = 30  # 30 segundos de música
+            
+            t = np.linspace(0, duration, int(sample_rate * duration))
+            melody = np.zeros_like(t)
+            
+            # BAJO PODEROSO - Ritmo de marcha militar
+            bass_freq = 55.00  # A1 - Bajo profundo
+            beat_rate = 2.0  # 120 BPM
+            
+            # Crear patrón de bajo tipo marcha
+            for beat in range(int(duration * beat_rate)):
+                beat_time = beat / beat_rate
+                beat_samples = int(beat_time * sample_rate)
+                beat_duration = int(0.15 * sample_rate)
+                
+                if beat_samples + beat_duration < len(t):
+                    section = t[beat_samples:beat_samples + beat_duration]
+                    # Bajo con ataque fuerte
+                    envelope = np.exp(-5 * (section - section[0]))
+                    melody[beat_samples:beat_samples + beat_duration] += 0.5 * envelope * np.sin(2 * np.pi * bass_freq * section)
+            
+            # ACORDES ÉPICOS - Progresión menor dramática
+            # Am - F - C - G (progresión épica)
+            chord_progression = [
+                (220.00, 261.63, 329.63),  # Am
+                (174.61, 220.00, 261.63),  # F
+                (261.63, 329.63, 392.00),  # C
+                (196.00, 246.94, 293.66)   # G
+            ]
+            
+            for i, chord in enumerate(chord_progression):
+                start = int(i * len(t) / 4)
+                end = int((i + 1) * len(t) / 4)
+                section = t[start:end]
+                
+                for freq in chord:
+                    # Acordes sostenidos con potencia
+                    melody[start:end] += 0.25 * np.sin(2 * np.pi * freq * section)
+                    # Armónicos para más cuerpo
+                    melody[start:end] += 0.12 * np.sin(2 * np.pi * freq * 2 * section)
+            
+            # MELODÍA HEROICA - Línea melódica en octavas altas
+            melody_notes = [440.00, 493.88, 523.25, 587.33, 523.25, 493.88, 440.00, 392.00]
+            note_duration = duration / len(melody_notes)
+            
+            for i, freq in enumerate(melody_notes):
+                start = int(i * note_duration * sample_rate)
+                end = int((i + 1) * note_duration * sample_rate)
+                if end > len(t):
+                    end = len(t)
+                section = t[start:end]
+                
+                # Envelope de nota
+                note_env = np.ones(len(section))
+                attack = int(len(section) * 0.1)
+                note_env[:attack] = np.linspace(0, 1, attack)
+                
+                melody[start:end] += 0.3 * note_env * np.sin(2 * np.pi * freq * section)
+            
+            # PERCUSIÓN SINTÉTICA - Bombos tipo guerra
+            for beat in range(int(duration * 1.0)):  # Cada segundo
+                beat_time = beat
+                kick_samples = int(beat_time * sample_rate)
+                kick_duration = int(0.1 * sample_rate)
+                
+                if kick_samples + kick_duration < len(t):
+                    section = np.linspace(0, 0.1, kick_duration)
+                    # Bombo sintético (barrido de frecuencia)
+                    freq_sweep = 80 * np.exp(-20 * section)
+                    kick = 0.4 * np.sin(2 * np.pi * freq_sweep * section * 50)
+                    melody[kick_samples:kick_samples + kick_duration] += kick
+            
+            # Envelope épico
+            envelope = np.ones_like(melody)
+            fade_samples = int(sample_rate * 1.5)
+            envelope[:fade_samples] = np.linspace(0, 1, fade_samples)
+            envelope[-fade_samples:] = np.linspace(1, 0, fade_samples)
+            melody *= envelope
+            
+            # Normalizar con más punch
+            melody = np.clip(melody * 1.2, -1, 1)
+            audio_data = (melody * 32767).astype(np.int16)
+            
+            # Crear archivo WAV
+            wav_io = io.BytesIO()
+            with wave.open(wav_io, 'w') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(audio_data.tobytes())
+            
+            wav_io.seek(0)
+            pygame.mixer.music.load(wav_io, 'wav')
+            
+        except Exception as e:
+            print(f"ERROR al crear música de menú: {e}")
+    
+    def _create_game_music(self):
+        """Crea música de batalla intensa para el juego"""
+        try:
+            import numpy as np
+            import io
+            import wave
+            
+            sample_rate = 44100
+            duration = 40  # 40 segundos de música
+            
+            t = np.linspace(0, duration, int(sample_rate * duration))
+            melody = np.zeros_like(t)
+            
+            # RITMO DE BATALLA - Más rápido y agresivo
+            bpm = 140  # Tempo de batalla
+            beat_rate = bpm / 60.0
+            
+            # BAJO ULTRA PODEROSO - Línea de bajo pulsante
+            bass_freq = 55.00  # A1
+            for beat in range(int(duration * beat_rate)):
+                beat_time = beat / beat_rate
+                beat_samples = int(beat_time * sample_rate)
+                beat_duration = int(0.12 * sample_rate)
+                
+                if beat_samples + beat_duration < len(t):
+                    section = t[beat_samples:beat_samples + beat_duration]
+                    envelope = np.exp(-8 * (section - section[0]))
+                    # Bajo distorsionado con armónicos
+                    melody[beat_samples:beat_samples + beat_duration] += 0.6 * envelope * np.sin(2 * np.pi * bass_freq * section)
+                    melody[beat_samples:beat_samples + beat_duration] += 0.3 * envelope * np.sin(2 * np.pi * bass_freq * 2 * section)
+            
+            # ACORDES POWER - Quintas poderosas
+            power_chords = [
+                (110.00, 165.00),  # A - E
+                (98.00, 146.83),   # G - D
+                (87.31, 130.81),   # F - C
+                (110.00, 165.00)   # A - E
+            ]
+            
+            for i, chord in enumerate(power_chords):
+                start = int(i * len(t) / 4)
+                end = int((i + 1) * len(t) / 4)
+                section = t[start:end]
+                
+                for freq in chord:
+                    # Power chords con distorsión
+                    melody[start:end] += 0.35 * np.sin(2 * np.pi * freq * section)
+                    melody[start:end] += 0.18 * np.sin(2 * np.pi * freq * 3 * section)
+            
+            # RIFF AGRESIVO - Melodía rápida y punzante
+            riff_notes = [220.00, 246.94, 261.63, 293.66, 261.63, 246.94, 220.00, 196.00,
+                         220.00, 261.63, 293.66, 329.63, 293.66, 261.63, 220.00, 196.00]
+            note_duration = duration / len(riff_notes)
+            
+            for i, freq in enumerate(riff_notes):
+                start = int(i * note_duration * sample_rate)
+                end = int((i + 0.8) * note_duration * sample_rate)  # Staccato
+                if end > len(t):
+                    end = len(t)
+                section = t[start:end]
+                
+                # Ataque rápido
+                note_env = np.exp(-3 * np.linspace(0, 1, len(section)))
+                melody[start:end] += 0.25 * note_env * np.sin(2 * np.pi * freq * section)
+            
+            # PERCUSIÓN DE GUERRA - Bombos y redoblantes
+            for beat in range(int(duration * 2.0)):  # Cada medio segundo
+                beat_time = beat / 2.0
+                kick_samples = int(beat_time * sample_rate)
+                
+                if beat % 2 == 0:  # Bombo
+                    kick_duration = int(0.08 * sample_rate)
+                    if kick_samples + kick_duration < len(t):
+                        section = np.linspace(0, 0.08, kick_duration)
+                        freq_sweep = 90 * np.exp(-25 * section)
+                        kick = 0.5 * np.sin(2 * np.pi * freq_sweep * section * 50)
+                        melody[kick_samples:kick_samples + kick_duration] += kick
+                else:  # Redoblante
+                    snare_duration = int(0.05 * sample_rate)
+                    if kick_samples + snare_duration < len(t):
+                        # Ruido blanco para redoblante
+                        snare = 0.15 * np.random.normal(0, 1, snare_duration)
+                        snare *= np.exp(-10 * np.linspace(0, 1, snare_duration))
+                        melody[kick_samples:kick_samples + snare_duration] += snare
+            
+            # HI-HAT CONTINUO - Ritmo constante
+            hihat_rate = beat_rate * 4  # 4 veces más rápido
+            for beat in range(int(duration * hihat_rate)):
+                beat_time = beat / hihat_rate
+                hihat_samples = int(beat_time * sample_rate)
+                hihat_duration = int(0.02 * sample_rate)
+                
+                if hihat_samples + hihat_duration < len(t):
+                    # Hi-hat sintético (ruido filtrado)
+                    hihat = 0.08 * np.random.normal(0, 1, hihat_duration)
+                    hihat *= np.exp(-15 * np.linspace(0, 1, hihat_duration))
+                    melody[hihat_samples:hihat_samples + hihat_duration] += hihat
+            
+            # Envelope dinámico con punch
+            envelope = np.ones_like(melody)
+            fade_samples = int(sample_rate * 2)
+            envelope[:fade_samples] = np.linspace(0, 1, fade_samples)
+            envelope[-fade_samples:] = np.linspace(1, 0, fade_samples)
+            
+            # Agregar modulación de intensidad
+            intensity = 0.9 + 0.1 * np.sin(2 * np.pi * 0.25 * t)  # Pulso lento
+            melody *= envelope * intensity
+            
+            # Normalizar con compresión
+            melody = np.clip(melody * 1.3, -1, 1)
+            audio_data = (melody * 32767).astype(np.int16)
+            
+            # Crear archivo WAV
+            wav_io = io.BytesIO()
+            with wave.open(wav_io, 'w') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(audio_data.tobytes())
+            
+            wav_io.seek(0)
+            pygame.mixer.music.load(wav_io, 'wav')
+            
+        except Exception as e:
+            print(f"ERROR al crear música de juego: {e}")
     
     def play_ambience(self, ambience_name, loops=-1):
         """
@@ -866,10 +1103,24 @@ def play_sound(sound_name, **kwargs):
         # Fallback silencioso
         pass
 
-def play_music(track_name):
+def play_music(track_name, loops=-1, volume=None):
     """Reproduce música"""
     if _audio_manager:
-        _audio_manager.play_music(track_name)
+        _audio_manager.play_music(track_name, loops, volume)
+
+def stop_music():
+    """Detiene la música"""
+    try:
+        pygame.mixer.music.stop()
+    except:
+        pass
+
+def set_music_volume(volume):
+    """Ajusta el volumen de la música"""
+    try:
+        pygame.mixer.music.set_volume(volume)
+    except:
+        pass
 
 def play_ambience(ambience_name):
     """Reproduce sonido ambiental"""

@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from objects.constants import *
 from objects.game import Game
-from objects.audio import init_audio
+from objects.audio import init_audio, play_music, stop_music
 from objects.utils import draw_text, lerp
 from Models.lava import Lava
 from objects.platforms import Platform, MovingPlatform
@@ -433,6 +433,9 @@ def main():
 
     # Inicializar audio
     init_audio()
+    
+    # Iniciar música de menú
+    play_music('menu', loops=-1)
 
     # Fuentes para menú
     font_title = pygame.font.Font(None, FONT_SIZE_TITLE)
@@ -592,6 +595,9 @@ def main():
           # Si salimos del menú para comenzar juego
             if start_game:
                 try:
+                    # Cambiar a música de juego (más suave)
+                    play_music('game', loops=-1)
+                    
                     # Crear instancia del juego con dificultad seleccionada, pasando la pantalla existente
                     game = Game(difficulty, screen)
                     
@@ -600,6 +606,9 @@ def main():
                     
                     # Debug: Verificar estado de la bandera
                     print(f"[DEBUG] Después de game.run(): return_to_menu = {getattr(game, 'return_to_menu', 'NO EXISTE')}")
+                    
+                    # Volver a música de menú
+                    play_music('menu', loops=-1)
                     
                     # Verificar si el juego quiere volver al menú o salir completamente
                     if hasattr(game, 'return_to_menu') and game.return_to_menu:

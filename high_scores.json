@@ -2,8 +2,18 @@
   "easy": [],
   "normal": [
     {
+      "name": "EDU",
+      "score": 18574,
+      "date": "2025-12-03"
+    },
+    {
       "name": "RRR",
       "score": 14035,
+      "date": "2025-12-03"
+    },
+    {
+      "name": "RRT",
+      "score": 8530,
       "date": "2025-12-03"
     }
   ],
