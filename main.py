@@ -265,8 +265,9 @@ def show_controls_menu(screen, clock, font_title, font_normal):
         ("DOWN", "Caída rápida"),
         ("ESC", "Pausa/Menú"),
         ("R", "Reiniciar juego"),
-        ("F", "Pantalla completa"),
-        ("M", "Silenciar audio")
+        ("M", "Silenciar audio"),
+        ("F", "Fullscreen"),
+        ("F1", "Salir/entrar del fullscreen")
     ]
     
     while True:
@@ -528,7 +529,7 @@ def main():
                          font_subtitle, (0, 0, 0), center=True)
                 
                 # Instrucciones para cambiar dificultad
-                draw_text(screen, "E:Fácil  N:Normal  H:Difícil  F:Fullscreen",
+                draw_text(screen, "E:Fácil  N:Normal  H:Difícil ",
                          SCREEN_WIDTH // 2, 230, font_normal, (200, 200, 200), center=True)
                 
                 # Opciones del menú principal
@@ -578,8 +579,8 @@ def main():
           # Si salimos del menú para comenzar juego
             if start_game:
                 try:
-                    # Crear instancia del juego con dificultad seleccionada
-                    game = Game(difficulty)
+                    # Crear instancia del juego con dificultad seleccionada, pasando la pantalla existente
+                    game = Game(difficulty, screen)
                     
                     # Ejecutar el juego
                     game.run()

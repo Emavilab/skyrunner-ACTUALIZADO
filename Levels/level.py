@@ -77,7 +77,7 @@ class Level:
     Genera y gestiona todos los elementos del nivel.
     """
     
-    def __init__(self, level_number, custom_config=None, use_tiles=True):
+    def __init__(self, level_number, custom_config=None, use_tiles=True, difficulty="normal"):
         """
         Inicializa un nivel.
         
@@ -85,8 +85,10 @@ class Level:
             level_number: Número del nivel (1-3)
             custom_config: Configuración personalizada (opcional)
             use_tiles: True para usar TileManager (por defecto)
+            difficulty: Dificultad del juego ("easy", "normal", "hard")
         """
         self.number = level_number
+        self.difficulty = difficulty
         self.config = custom_config if custom_config else LEVELS_CONFIG[level_number]
         self.theme = LEVEL_COLORS[level_number]
         self.use_tiles = use_tiles
@@ -537,28 +539,49 @@ class Level:
         # Los rayos se generan dinámicamente en update
     
     def _generate_drones(self):
-        """Genera drones para niveles 2 y 3"""
+        """Genera drones iniciales para niveles 2 y 3, ajustado por dificultad"""
         try:
-            drone_count = {2: 3, 3: 5}[self.number]
+            # Cantidad base de drones según nivel
+            base_count = {2: 2, 3: 3}[self.number]
+            
+            # Ajustar según dificultad
+            difficulty_multiplier = {
+                "easy": 0.5,
+                "normal": 1.0,
+                "hard": 1.5
+            }.get(self.difficulty, 1.0)
+            
+            drone_count = max(1, int(base_count * difficulty_multiplier))
             all_platforms = self.get_all_platforms()
             
-            print(f"[Level] Generando {drone_count} drones...")
+            print(f"[Level] Generando {drone_count} drones iniciales (difficulty: {self.difficulty})...")
             
             for i in range(drone_count):
                 if len(all_platforms) > i * 2:
                     # Posicionar drones en la mitad superior del nivel
-                    target_y = self.height * 0.3 + (i * 100)
+                    target_y = self.height * 0.3 + (i * 150)
                     
                     # Encontrar posición adecuada
                     x = random.randint(100, SCREEN_WIDTH - 100)
                     y = target_y
                     
-                    drone = SurveillanceDrone(x, y, patrol_range=150, detection_range=200)
+                    # Ajustar parámetros según dificultad
+                    patrol_range = 150
+                    detection_range = 200
+                    
+                    if self.difficulty == "hard":
+                        detection_range = 300
+                        patrol_range = 200
+                    elif self.difficulty == "easy":
+                        detection_range = 150
+                        patrol_range = 120
+                    
+                    drone = SurveillanceDrone(x, y, patrol_range=patrol_range, detection_range=detection_range)
                     
                     # Mejorar drones según nivel
                     if self.number == 3:
-                        drone.detection_range = 350
-                        drone.speed = 2.5
+                        drone.detection_range += 50
+                        drone.speed = 2.5 if self.difficulty == "hard" else 2.0
                     
                     self.enemies.append(drone)
         except ImportError as e:

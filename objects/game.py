@@ -15,9 +15,12 @@ from objects.audio import init_audio, play_sound
 from Models.lava import Lava
 
 class Game:
-    def __init__(self, difficulty="normal"):
-        # Pantalla
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    def __init__(self, difficulty="normal", screen=None):
+        # Pantalla - usar la pantalla existente o crear una nueva
+        if screen is None:
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        else:
+            self.screen = screen
         self.clock = pygame.time.Clock()
         self.running = True
         self.return_to_menu = False  # Nueva bandera para volver al menú
@@ -61,11 +64,27 @@ class Game:
         self.player_name = ""
         self.entering_name = False
         
+        # Sistema de spawning de drones
+        self.drone_spawn_timer = 0
+        self.drone_spawn_interval = 8.0  # Segundos entre spawns
+        self.last_drone_spawn_height = 0
+        
         # Comenzar juego
         self.start_level(1)
     
     def start_level(self, level_number):
         self.current_level_number = level_number
+        
+        # Resetear sistema de drones
+        self.drone_spawn_timer = 0
+        self.last_drone_spawn_height = 0
+        
+        # Ajustar intervalo de spawn según dificultad
+        self.drone_spawn_interval = {
+            "easy": 12.0,
+            "normal": 8.0,
+            "hard": 5.0
+        }.get(self.difficulty, 8.0)
         
         # Ajustar configuración según dificultad
         level_config = LEVELS_CONFIG[level_number].copy()
@@ -81,7 +100,7 @@ class Game:
                 level_config['powerups'] * self.settings["powerup_rate"]
             )
         
-        self.level = Level(level_number, level_config)
+        self.level = Level(level_number, level_config, difficulty=self.difficulty)
         self.player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 150, self.settings)
         
         # Inicializar lava
@@ -104,6 +123,61 @@ class Game:
         
         self.target_camera_y = self.player.y - CAMERA_OFFSET_Y
         self.camera_y = lerp(self.camera_y, self.target_camera_y, CAMERA_SMOOTHING)
+    
+    def spawn_drone(self):
+        """Genera un nuevo drone en el trayecto de subida"""
+        if not self.level or not self.player:
+            return
+        
+        # Solo spawnear en niveles 2 y 3
+        if self.current_level_number < 2:
+            return
+        
+        try:
+            from Models.enemies import SurveillanceDrone
+            
+            # Posicionar drone más arriba del jugador
+            spawn_distance = 400  # Distancia por encima del jugador
+            x = random.randint(150, SCREEN_WIDTH - 150)
+            y = self.player.y - spawn_distance
+            
+            # Evitar spawn muy cerca de drones existentes
+            too_close = False
+            for enemy in self.level.enemies:
+                if hasattr(enemy, '__class__') and enemy.__class__.__name__ == 'SurveillanceDrone':
+                    distance = math.sqrt((enemy.x - x)**2 + (enemy.y - y)**2)
+                    if distance < 200:
+                        too_close = True
+                        break
+            
+            if too_close:
+                return
+            
+            # Crear drone con parámetros según nivel y dificultad
+            patrol_range = 150
+            detection_range = 200
+            
+            if self.current_level_number == 3:
+                detection_range = 300
+            
+            # Ajustar según dificultad
+            if self.difficulty == "hard":
+                detection_range += 100
+                patrol_range += 50
+            elif self.difficulty == "easy":
+                detection_range -= 50
+            
+            drone = SurveillanceDrone(x, y, patrol_range=patrol_range, detection_range=detection_range)
+            
+            # Mejorar según nivel
+            if self.current_level_number == 3:
+                drone.speed = 2.5
+            
+            self.level.enemies.append(drone)
+            print(f"[Drone Spawn] Nuevo drone en ({x}, {y}) - Difficulty: {self.difficulty}")
+            
+        except Exception as e:
+            print(f"[Drone Spawn] Error: {e}")
     
     def check_collisions(self):
         if not self.player or not self.level:
@@ -299,6 +373,12 @@ class Game:
             self.check_collisions()
             self.check_level_complete()
             
+            # Sistema de spawning continuo de drones
+            self.drone_spawn_timer += dt
+            if self.drone_spawn_timer >= self.drone_spawn_interval:
+                self.spawn_drone()
+                self.drone_spawn_timer = 0
+            
             # Verificar si el jugador murió completamente (sin vidas)
             if self.player and not self.player.alive and self.player.lives <= 0:
                 print("[Game] Cambiando a STATE_GAME_OVER - jugador sin vidas")
@@ -403,9 +483,10 @@ class Game:
             
             self.screen.blit(temp_surface, (shake_x, shake_y))
             
+            # Dibujar HUD del jugador y la información del nivel
             if self.player:
                 self.player.draw_hud(self.screen)
-                self.draw_difficulty_hud()
+                self.draw_level_info_hud()
         
         elif self.state == STATE_PAUSED:
             self.level.draw_background(self.screen, self.camera_y)
@@ -429,6 +510,49 @@ class Game:
         
         elif self.state == STATE_VICTORY:
             self.draw_victory()
+    
+    def draw_level_info_hud(self):
+        """Dibuja la información del nivel, tiempo y dificultad en la parte superior central"""
+        # Calcular tiempo transcurrido
+        elapsed_minutes = int(self.elapsed_time // 60)
+        elapsed_seconds = int(self.elapsed_time % 60)
+        time_str = f"{elapsed_minutes:02d}:{elapsed_seconds:02d}"
+        
+        # Obtener nombre del nivel
+        level_names = {1: "Bosque Místico", 2: "Caverna Oscura", 3: "Tormenta Eléctrica"}
+        level_name = level_names.get(self.current_level_number, f"Nivel {self.current_level_number}")
+        
+        # Configuración
+        panel_width = 500
+        panel_height = 70
+        panel_x = (SCREEN_WIDTH - panel_width) // 2
+        panel_y = 10
+        
+        # Dibujar panel semi-transparente
+        panel_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        pygame.draw.rect(panel_surf, (0, 0, 0, 180), (0, 0, panel_width, panel_height), border_radius=10)
+        pygame.draw.rect(panel_surf, self.settings["color"] + (255,), (0, 0, panel_width, panel_height), 3, border_radius=10)
+        self.screen.blit(panel_surf, (panel_x, panel_y))
+        
+        # Dibujar nombre del nivel (arriba, centrado)
+        level_text = self.font_subtitle.render(level_name, True, CYAN)
+        level_text_rect = level_text.get_rect(center=(panel_x + panel_width // 2, panel_y + 20))
+        self.screen.blit(level_text, level_text_rect)
+        
+        # Dibujar tiempo y dificultad (abajo, en línea)
+        info_y = panel_y + 45
+        
+        # Tiempo (izquierda)
+        time_label = self.font_small.render("Tiempo:", True, WHITE)
+        time_value = self.font_subtitle.render(time_str, True, YELLOW)
+        self.screen.blit(time_label, (panel_x + 20, info_y - 2))
+        self.screen.blit(time_value, (panel_x + 85, info_y - 2))
+        
+        # Dificultad (derecha)
+        diff_label = self.font_small.render("Dificultad:", True, WHITE)
+        diff_value = self.font_subtitle.render(self.settings['name'], True, self.settings['color'])
+        self.screen.blit(diff_label, (panel_x + panel_width - 180, info_y - 2))
+        self.screen.blit(diff_value, (panel_x + panel_width - 95, info_y - 2))
     
     def draw_difficulty_hud(self):
         color = self.settings["color"]
@@ -587,6 +711,10 @@ class Game:
                 self.running = False
             
             if event.type == pygame.KEYDOWN:
+                # F1 para salir del fullscreen
+                if event.key == pygame.K_F1:
+                    pygame.display.toggle_fullscreen()
+                
                 if self.state == STATE_PLAYING:
                     if event.key == pygame.K_ESCAPE:
                         self.state = STATE_PAUSED
