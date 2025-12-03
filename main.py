@@ -575,7 +575,7 @@ def main():
                 else:
                     menu_state = MenuState.MAIN
             
-            # Si salimos del menú para comenzar juego
+          # Si salimos del menú para comenzar juego
             if start_game:
                 try:
                     # Crear instancia del juego con dificultad seleccionada
@@ -596,7 +596,7 @@ def main():
                         menu_state = MenuState.MAIN
                         selected_option = 0
                         start_game = False
-                        # running sigue siendo True para continuar en el menú
+                        running = True  # CRÍTICO: Reactivar el loop del menú
                     else:
                         print("[DEBUG] Juego terminó - cerrando aplicación")
                         # El juego terminó por cerrar ventana
@@ -609,6 +609,7 @@ def main():
                     menu_state = MenuState.MAIN
                     selected_option = 0
                     start_game = False
+                    running = True  # Mantener el menú activo tras error
         
     except Exception as e:
         print(f"[Error] Se produjo un error durante la ejecución del juego: {e}")
