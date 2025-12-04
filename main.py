@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from objects.constants import *
 from objects.game import Game
-from objects.audio import init_audio, play_music, stop_music
+from objects.audio import init_audio, play_music, stop_music, toggle_mute, is_muted, toggle_mute, is_muted
 from objects.utils import draw_text, lerp
 from Models.lava import Lava
 from objects.platforms import Platform, MovingPlatform
@@ -509,6 +509,10 @@ def main():
                         elif event.key == pygame.K_f:
                             # Pantalla completa
                             pygame.display.toggle_fullscreen()
+                        elif event.key == pygame.K_m:
+                            # Silenciar/activar audio
+                            muted = toggle_mute()
+                            print(f"Audio {'silenciado' if muted else 'activado'}")
                     
                     elif event.key == pygame.K_ESCAPE:
                         # Volver al menú principal desde cualquier submenú
@@ -547,6 +551,14 @@ def main():
                 # Instrucciones para cambiar dificultad
                 draw_text(screen, "E:Fácil  N:Normal  H:Difícil ",
                          SCREEN_WIDTH // 2, 230, font_normal, (200, 200, 200), center=True)
+                
+                # Indicador de mute
+                mute_status = is_muted()
+                mute_icon = "🔇" if mute_status else "🔊"
+                mute_text = f"{mute_icon} M: {'SILENCIADO' if mute_status else 'SONIDO ON'}"
+                mute_color = (255, 100, 100) if mute_status else (100, 255, 100)
+                draw_text(screen, mute_text, SCREEN_WIDTH // 2, 260, 
+                         font_normal, mute_color, center=True)
                 
                 # Opciones del menú principal
                 y_start = 300

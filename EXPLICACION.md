@@ -46,8 +46,7 @@ skyrunner-main/
     ├── Player/                 # Sprites del jugador
     ├── Enemies/                # Sprites de enemigos
     ├── Terrain/                # Tilesets (Blue.png, Terrain.png)
-    ├── Collectables/           # Sprites de power-ups (kiwi.png)
-    └── Castle/                 # Sprites del castillo
+    ├── Collectables/           # Sprites de power-ups (kiwi.png)─
 ```
 
 ### ✅ Identación Correcta

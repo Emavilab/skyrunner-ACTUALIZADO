@@ -38,6 +38,15 @@ class AudioManager:
             self.ambience_volume = 0.4  # Ambiente/sonidos de fondo
             self.ui_volume = 0.9        # Sonidos de interfaz
             
+            # Estado de mute
+            self.is_muted = False
+            self.volume_before_mute = {
+                'sfx': self.sfx_volume,
+                'music': self.music_volume,
+                'ambience': self.ambience_volume,
+                'ui': self.ui_volume
+            }
+            
             # ============================================
             # SISTEMA DE MÚSICA
             # ============================================
@@ -664,6 +673,10 @@ class AudioManager:
         if not self.enabled or sound_name not in self.sounds:
             return
         
+        # Si está muteado, no reproducir
+        if self.is_muted:
+            return
+        
         try:
             sound = self.sounds[sound_name]
             
@@ -715,6 +728,10 @@ class AudioManager:
             else:
                 return
             
+            # Si está muteado, volumen = 0
+            if self.is_muted:
+                target_volume = 0
+            
             # Configurar y reproducir
             pygame.mixer.music.set_volume(target_volume)
             pygame.mixer.music.play(loops)
@@ -724,6 +741,59 @@ class AudioManager:
             
         except Exception as e:
             print(f"ERROR Error al reproducir música {track_name}: {e}")
+    
+    def toggle_mute(self):
+        """
+        Silencia o activa todo el audio (mute/unmute).
+        
+        Returns:
+            bool: True si está muteado, False si está activado
+        """
+        if not self.enabled:
+            return True
+        
+        self.is_muted = not self.is_muted
+        
+        if self.is_muted:
+            # Guardar volúmenes actuales y silenciar
+            self.volume_before_mute = {
+                'sfx': self.sfx_volume,
+                'music': self.music_volume,
+                'ambience': self.ambience_volume,
+                'ui': self.ui_volume
+            }
+            
+            # Silenciar todo
+            pygame.mixer.music.set_volume(0)
+            for sound in self.sounds.values():
+                if sound:
+                    sound.set_volume(0)
+            for sound in self.ambience_sounds.values():
+                if sound:
+                    sound.set_volume(0)
+            
+            print("[AUDIO] Silenciado")
+        else:
+            # Restaurar volúmenes
+            self.sfx_volume = self.volume_before_mute.get('sfx', 0.85)
+            self.music_volume = self.volume_before_mute.get('music', 0.65)
+            self.ambience_volume = self.volume_before_mute.get('ambience', 0.4)
+            self.ui_volume = self.volume_before_mute.get('ui', 0.9)
+            
+            # Restaurar volumen de música
+            pygame.mixer.music.set_volume(self.music_volume)
+            
+            # Restaurar volumen de efectos
+            for sound in self.sounds.values():
+                if sound:
+                    sound.set_volume(self.sfx_volume)
+            for sound in self.ambience_sounds.values():
+                if sound:
+                    sound.set_volume(self.ambience_volume)
+            
+            print("[AUDIO] Activado")
+        
+        return self.is_muted
     
     def _create_menu_music(self):
         """Crea música épica de guerra para el menú"""
@@ -1147,6 +1217,30 @@ def toggle_sound():
     if _audio_manager:
         return _audio_manager.toggle_sound()
     return False
+
+def toggle_mute():
+    """Silencia/activa todo el audio (mute)"""
+    if _audio_manager:
+        return _audio_manager.toggle_mute()
+    return False
+
+def is_muted():
+    """Verifica si el audio está silenciado"""
+    if _audio_manager:
+        return _audio_manager.is_muted
+    return True
+
+def toggle_mute():
+    """Silencia/activa todo el audio (mute)"""
+    if _audio_manager:
+        return _audio_manager.toggle_mute()
+    return False
+
+def is_muted():
+    """Verifica si el audio está silenciado"""
+    if _audio_manager:
+        return _audio_manager.is_muted
+    return True
 
 def toggle_music():
     """Activa/desactiva música"""

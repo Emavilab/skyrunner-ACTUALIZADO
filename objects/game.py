@@ -14,7 +14,7 @@ from Models.player import Player
 from Levels.level import Level
 from objects.powerup import PowerUp, CollectionEffect
 from objects.utils import lerp, draw_text
-from objects.audio import init_audio, play_sound
+from objects.audio import init_audio, play_sound, toggle_mute, is_muted
 from Models.lava import Lava
 
 class Game:
@@ -616,6 +616,13 @@ class Game:
             record_surface = self.font_small.render(record_text, True, (255, 215, 0))
             record_rect = record_surface.get_rect(center=(panel_x + panel_width // 2, panel_y + panel_height + 15))
             self.screen.blit(record_surface, record_rect)
+        
+        # Indicador de audio mute (esquina superior derecha)
+        if is_muted():
+            mute_text = "🔇 MUTE"
+            mute_color = (255, 100, 100)
+            mute_surface = self.font_small.render(mute_text, True, mute_color)
+            self.screen.blit(mute_surface, (SCREEN_WIDTH - 100, 10))
     
     def draw_difficulty_hud(self):
         color = self.settings["color"]
@@ -644,6 +651,16 @@ class Game:
         
         draw_text(self.screen, "Q - Volver al Menú Principal", SCREEN_WIDTH // 2, 440,
                  self.font_subtitle, WHITE, center=True)
+        
+        draw_text(self.screen, "M - Silenciar/Activar Audio", SCREEN_WIDTH // 2, 490,
+                 self.font_small, (200, 200, 200), center=True)
+        
+        # Indicador de estado de audio
+        mute_status = is_muted()
+        mute_text = "🔇 SILENCIADO" if mute_status else "🔊 AUDIO ON"
+        mute_color = (255, 100, 100) if mute_status else (100, 255, 100)
+        draw_text(self.screen, mute_text, SCREEN_WIDTH // 2, 520,
+                 self.font_small, mute_color, center=True)
     
     def draw_game_over(self):
         self.screen.fill(BLACK)
@@ -800,6 +817,11 @@ class Game:
                 # F1 para salir del fullscreen
                 if event.key == pygame.K_F1:
                     pygame.display.toggle_fullscreen()
+                
+                # M para silenciar/activar audio (funciona en cualquier estado)
+                if event.key == pygame.K_m:
+                    muted = toggle_mute()
+                    print(f"[AUDIO] {'Silenciado' if muted else 'Activado'}")
                 
                 if self.state == STATE_PLAYING:
                     if event.key == pygame.K_ESCAPE:
