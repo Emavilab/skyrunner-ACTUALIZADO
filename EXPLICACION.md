@@ -12,7 +12,7 @@
 skyrunner-main/
 ├── main.py                      # Punto de entrada - Sistema de menús
 ├── README.md                    # Documentación completa
-├── EVALUACION_PROYECTO.md       # Este documento
+
 │
 ├── Models/                      # 📦 Módulo de Modelos
 │   ├── player.py               # Clase Player (jugador)
@@ -643,7 +643,7 @@ if width <= 0 or height <= 0:
 
 ---
 
-## ✅ 5. PRESENTACIÓN ANTE LA TERNA EVALUADORA
+
 
 ### 🏗️ Arquitectura del Proyecto
 
@@ -1103,95 +1103,3 @@ def lerp(start, end, t):
 
 ---
 
-## 📈 RESUMEN DE CUMPLIMIENTO
-
-| Criterio | Estado | Evidencia |
-|----------|--------|-----------|
-| **1. Código fuente depurado** | ✅ 100% | Sin errores, organizado en 7 módulos |
-| **2. Conceptos de IG** | ✅ 100% | Transformaciones, vistas, texturas, animaciones |
-| **3. Paradigma OOP** | ✅ 100% | 20+ clases, herencia, polimorfismo |
-| **4. Producto completo** | ✅ 100% | Menús, 3 niveles, 7 power-ups, 5 enemigos |
-| **5. Presentación** | ✅ 100% | Documentación completa y demostraciones |
-
----
-
-## 🎓 CONCEPTOS ACADÉMICOS APLICADOS
-
-### Matemáticas
-
-- ✅ Vectores 2D (velocidad, posición)
-- ✅ Trigonometría (sin, cos para movimientos)
-- ✅ Interpolación lineal
-- ✅ Ecuaciones de movimiento (cinemática)
-- ✅ Física básica (gravedad, inercia)
-
-### Informática Gráfica
-
-- ✅ Pipeline de renderizado
-- ✅ Transformaciones geométricas
-- ✅ Sistemas de coordenadas
-- ✅ Culling y optimización
-- ✅ Texturas y mapeo
-- ✅ Animación por keyframes
-- ✅ Síntesis de audio procedural
-
-### Algoritmos
-
-- ✅ Detección de colisiones (AABB)
-- ✅ Ordenamiento (high scores)
-- ✅ Generación procedural
-- ✅ Búsqueda y pathfinding básico
-- ✅ Gestión de memoria (culling)
-
-### Estructuras de Datos
-
-- ✅ Listas dinámicas
-- ✅ Diccionarios (hash maps)
-- ✅ Colas (eventos, partículas)
-- ✅ Matrices 2D (tiles)
-- ✅ Árboles (jerarquía de clases)
-
----
-
-## 📦 ENTREGABLES
-
-1. ✅ **Código Fuente Completo** - ~5000 líneas Python
-2. ✅ **Assets Gráficos** - Sprites, tilesets, texturas
-3. ✅ **README.md** - Documentación de usuario
-4. ✅ **EVALUACION_PROYECTO.md** - Este documento
-5. ✅ **high_scores.json** - Sistema de persistencia funcional
-6. ✅ **Ejecutable** - main.py (sin dependencias adicionales salvo Pygame y NumPy)
-
----
-
-## 🏆 CONCLUSIÓN
-
-El proyecto **SkyRunner** cumple al **100%** con todos los criterios de evaluación establecidos:
-
-1. ✅ Código profesional, modular y documentado
-2. ✅ Aplicación completa de conceptos de informática gráfica
-3. ✅ Paradigma orientado a objetos aplicado correctamente
-4. ✅ Producto funcional, completo y libre de errores
-5. ✅ Documentación exhaustiva para presentación
-
-**Líneas de código:** ~5,000
-**Clases implementadas:** 35+
-**Módulos:** 7
-**Algoritmos:** 10+
-**Transformaciones:** Traslación, Rotación, Escalado
-**Estructuras de datos:** Listas, Diccionarios, Colas, Matrices
-
----
-
-## 👥 INFORMACIÓN DEL PROYECTO
-
-**Nombre:** SkyRunner - Runner Vertical 2D
-**Materia:** Fundamentos de Informática Gráfica
-**Fecha:** Diciembre 2025
-**Herramientas:** Python 3.13, Pygame 2.6.1, NumPy
-**Paradigma:** Orientado a Objetos
-**Líneas de código:** ~5,000
-
----
-
-**Documento generado automáticamente para evaluación académica**
