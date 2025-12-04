@@ -532,17 +532,6 @@ Complejidad: O(n)
 donde n = número de muestras (sample_rate * duration)
 ```
 
----
-
-## 🎓 Requisitos Académicos Cumplidos
-
-### ✅ **Código Fuente Depurado**
-- Organización modular (7 módulos)
-- Nomenclatura consistente (snake_case)
-- Comentarios exhaustivos
-- Docstrings en todas las clases/métodos
-- Sin errores de linting
-
 ### ✅ **Conceptos de Informática Gráfica**
 - Transformaciones 2D (traslación, rotación, escalado)
 - Proyección ortográfica
