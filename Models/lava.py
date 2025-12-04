@@ -1,5 +1,23 @@
 """
 lava.py - Sistema de Lava Dinámica
+
+Este módulo implementa un sistema de lava ascendente con física realista,
+efectos visuales dinámicos y mecánicas de presión progresiva.
+
+Características principales:
+- Lava ascendente que persigue al jugador
+- Sistema de ondas procedurales con múltiples capas
+- Partículas de lava, burbujas y humo
+- Aceleración progresiva basada en altura ganada
+- Sistema de "presión de escape" por inactividad
+- Efectos visuales con pulsación de color y brillo
+- Niveles de peligro dinámicos
+
+Clases:
+    Lava: Sistema principal de lava con física y renderizado
+
+Autor: Proyecto SkyRunner
+Fecha: 2025
 """
 
 import pygame
@@ -9,38 +27,94 @@ from objects.constants import *
 from objects.utils import lerp, clamp, sine_wave
 
 class Lava:
+    """
+    Sistema de lava ascendente con física dinámica y efectos visuales.
+    
+    La lava persigue al jugador ascendiendo constantemente, acelerándose
+    progresivamente según la altura ganada y aplicando presión cuando el
+    jugador permanece estático. Incluye ondas procedurales, partículas,
+    burbujas y efectos de humo.
+    
+    Attributes:
+        difficulty (str): Nivel de dificultad ('easy', 'normal', 'hard')
+        settings (dict): Configuración de dificultad desde constants
+        y (float): Posición Y actual de la lava
+        target_y (float): Posición Y objetivo (para interpolación suave)
+        base_speed (float): Velocidad base de ascenso
+        current_speed (float): Velocidad actual (con multiplicadores)
+        acceleration (float): Aceleración por tiempo
+        wave_time (float): Tiempo acumulado para animación de ondas
+        wave_amplitude (float): Amplitud de las ondas superficiales
+        escape_timer (float): Temporizador de presión por inactividad
+        progress_multiplier (float): Multiplicador de velocidad por progreso
+        particles (list): Lista de partículas de lava activas
+        bubbles (list): Lista de burbujas en la superficie
+        smoke_particles (list): Lista de partículas de humo
+        is_paused (bool): Estado de pausa del sistema
+        color_pulse (float): Factor de pulsación de color (0-1)
+        glow_intensity (float): Intensidad del brillo (0-1)
+        
+    Methods:
+        initialize(player_y): Inicializa la lava en posición relativa al jugador
+        update(dt, player_y, player_rect, game_state): Actualiza física y partículas
+        draw(surface, camera_offset): Renderiza la lava y sus efectos
+        draw_hud(surface, player_y, player_rect): Dibuja HUD de información
+        get_surface_y(x): Calcula altura de la superficie con ondas en X
+        reset(player_y): Reinicia el sistema a valores iniciales
+        pause(): Pausa el sistema
+        resume(): Reanuda el sistema
+    """
     def __init__(self, difficulty="normal"):
+        """
+        Inicializa el sistema de lava con la dificultad especificada.
+        
+        Configura todos los parámetros de física, velocidad, efectos visuales
+        y sistemas de partículas según la dificultad seleccionada.
+        
+        Args:
+            difficulty (str): Nivel de dificultad ('easy', 'normal', 'hard').
+                             Afecta velocidad, aceleración y densidad de partículas.
+        """
+        # Configuración de dificultad
         self.difficulty = difficulty
         self.settings = DIFFICULTY_SETTINGS[difficulty]
         
-        self.y = SCREEN_HEIGHT
-        self.target_y = SCREEN_HEIGHT
-        self.base_speed = self.settings["lava_speed"]
-        self.current_speed = self.base_speed
-        self.acceleration = self.settings["lava_acceleration"]
+        # Posición y movimiento
+        self.y = SCREEN_HEIGHT  # Posición Y actual
+        self.target_y = SCREEN_HEIGHT  # Posición objetivo (interpolación)
+        self.base_speed = self.settings["lava_speed"]  # Velocidad base
+        self.current_speed = self.base_speed  # Velocidad actual con multiplicadores
+        self.acceleration = self.settings["lava_acceleration"]  # Aceleración por tiempo
         
-        self.wave_time = 0
-        self.wave_amplitude = LAVA_CONFIG["wave_amplitude"]
-        self.wave_frequency = 0.5
+        # Sistema de ondas superficiales
+        self.wave_time = 0  # Tiempo para animación de ondas
+        self.wave_amplitude = LAVA_CONFIG["wave_amplitude"]  # Altura de ondas
+        self.wave_frequency = 0.5  # Frecuencia de ondas
         
-        self.escape_timer = 0
-        self.escape_threshold = 5.0
-        self.escape_multiplier = 1.2
+        # Sistema de presión de escape (penaliza inactividad)
+        self.escape_timer = 0  # Contador de tiempo estático
+        self.escape_threshold = 5.0  # Segundos antes de activar presión
+        self.escape_multiplier = 1.2  # Multiplicador cuando se activa
         
-        self.progress_multiplier = 1.0
-        self.last_player_y = SCREEN_HEIGHT
+        # Sistema de aceleración progresiva
+        self.progress_multiplier = 1.0  # Multiplicador por altura ganada
+        self.last_player_y = SCREEN_HEIGHT  # Última posición del jugador
         
-        self.particles = []
-        self.bubbles = []
-        self.smoke_particles = []
-        self.particle_timer = 0
+        # Sistemas de partículas
+        self.particles = []  # Partículas de lava volando
+        self.bubbles = []  # Burbujas en la superficie
+        self.smoke_particles = []  # Humo cuando el jugador está cerca
+        self.particle_timer = 0  # Temporizador de generación
         
-        self.is_paused = False
-        self.initialized = False
+        # Estados del sistema
+        self.is_paused = False  # Pausa el sistema
+        self.initialized = False  # Indica si se inicializó la posición
         
-        self.color_pulse = 0
-        self.glow_intensity = 0
+        # Efectos visuales
+        self.color_pulse = 0  # Pulsación de color (0-1)
+        self.glow_intensity = 0  # Intensidad del brillo (0-1)
         
+        # Información de depuración
         self.debug_info = {
             "speed": 0,
             "acceleration": 0,
@@ -49,15 +123,44 @@ class Lava:
         }
     
     def initialize(self, player_y):
+        """
+        Inicializa la posición de la lava relativa al jugador.
+        
+        Coloca la lava 500 píxeles debajo del jugador al inicio del nivel
+        y marca el sistema como inicializado.
+        
+        Args:
+            player_y (float): Posición Y actual del jugador.
+        """
         self.y = player_y + 500
         self.target_y = self.y
         self.last_player_y = player_y
         self.initialized = True
     
     def update(self, dt, player_y, player_rect, game_state):
+        """
+        Actualiza la física, movimiento y efectos de la lava.
+        
+        Este método maneja:
+        - Animación de ondas superficiales
+        - Aceleración progresiva por altura ganada
+        - Sistema de presión de escape por inactividad
+        - Generación y actualización de partículas/burbujas
+        - Detección de colisiones con el jugador
+        
+        Args:
+            dt (float): Delta time en segundos desde el último frame.
+            player_y (float): Posición Y actual del jugador.
+            player_rect (pygame.Rect): Rectángulo de colisión del jugador.
+            game_state (str): Estado actual del juego (playing, paused, etc.).
+            
+        Returns:
+            bool: True si la lava tocó al jugador, False en caso contrario.
+        """
         if not self.initialized or self.is_paused:
             return False
         
+        # Actualizar animación de ondas y pulsación de color
         self.wave_time += dt
         self.color_pulse = (math.sin(self.wave_time * 3) + 1) / 2
         
@@ -91,6 +194,16 @@ class Lava:
         return self._check_collision(player_rect, distance)
     
     def _update_progress_acceleration(self, player_y):
+        """
+        Actualiza el multiplicador de velocidad basado en la altura ganada.
+        
+        Aumenta progresivamente la velocidad de la lava a medida que el
+        jugador asciende, incentivando mantener un ritmo constante.
+        El multiplicador está limitado entre 1.0x y 2.0x.
+        
+        Args:
+            player_y (float): Posición Y actual del jugador.
+        """
         height_gained = max(0, self.last_player_y - player_y)
         
         if height_gained > 0:
@@ -100,6 +213,17 @@ class Lava:
         self.last_player_y = player_y
     
     def _update_escape_pressure(self, player_y, dt):
+        """
+        Actualiza el sistema de presión de escape por inactividad.
+        
+        Si el jugador se mueve menos de 10 píxeles, incrementa un temporizador.
+        Cuando el temporizador supera el umbral, la lava acelera para forzar
+        movimiento. Se resetea cuando el jugador se mueve activamente.
+        
+        Args:
+            player_y (float): Posición Y actual del jugador.
+            dt (float): Delta time en segundos.
+        """
         distance_moved = abs(player_y - self.last_player_y)
         
         if distance_moved < 10:
@@ -229,6 +353,23 @@ class Lava:
             })
     
     def get_surface_y(self, x):
+        """
+        Calcula la altura de la superficie de lava en una posición X específica.
+        
+        Combina tres ondas sinusoidales con diferentes frecuencias y amplitudes
+        para crear un efecto de oleaje realista y dinámico.
+        
+        Ondas:
+        - wave1: Onda principal (frecuencia media, amplitud completa)
+        - wave2: Onda secundaria (frecuencia alta, 50% amplitud)
+        - wave3: Onda de fondo (frecuencia baja, 30% amplitud)
+        
+        Args:
+            x (float): Posición horizontal donde calcular la altura.
+            
+        Returns:
+            float: Altura Y de la superficie en la posición X dada.
+        """
         wave1 = math.sin(x * 0.02 + self.wave_time * 2) * self.wave_amplitude
         wave2 = math.sin(x * 0.05 + self.wave_time * 1.5) * (self.wave_amplitude * 0.5)
         wave3 = math.sin(x * 0.01 + self.wave_time * 0.8) * (self.wave_amplitude * 0.3)
@@ -250,6 +391,16 @@ class Lava:
         self.glow_intensity = min(1.0, self.glow_intensity + 0.3)
     
     def reset(self, player_y):
+        """
+        Reinicia el sistema de lava a su estado inicial.
+        
+        Restablece posición, velocidad, multiplicadores, temporizadores
+        y limpia todas las partículas activas. Usado al reiniciar nivel
+        o cuando el jugador pierde una vida.
+        
+        Args:
+            player_y (float): Nueva posición Y del jugador para reposicionar lava.
+        """
         self.y = player_y + 500
         self.target_y = self.y
         self.current_speed = self.base_speed
@@ -267,8 +418,27 @@ class Lava:
         self.is_paused = False
     
     def draw(self, surface, camera_offset):
+        """
+        Renderiza la lava y todos sus efectos visuales.
+        
+        Dibuja múltiples capas:
+        1. Capa profunda (lava oscura del fondo)
+        2. Capa media (transición de color)
+        3. Superficie con ondas procedurales
+        4. Línea de brillo en las crestas
+        5. Burbujas con transparencia
+        6. Partículas de lava volando
+        7. Partículas de humo
+        
+        Aplica pulsación de color y efectos de brillo dinámicos.
+        
+        Args:
+            surface (pygame.Surface): Superficie donde dibujar.
+            camera_offset (float): Offset Y de la cámara para scroll.
+        """
         screen_y = self.y - camera_offset
         
+        # Culling: no dibujar si está completamente fuera de pantalla
         if screen_y > SCREEN_HEIGHT + 100:
             return
         
